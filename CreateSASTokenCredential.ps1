@@ -1,38 +1,34 @@
-# Install the AzureRM and SqlServer modules if not already installed
-if (-not (Get-Module -ListAvailable -Name Az.Accounts)) {
-    Install-Module -Name Az.Accounts -Scope CurrentUser -AllowClobber
-}
-if (-not (Get-Module -ListAvailable -Name SqlServer)) {
-    Install-Module -Name SqlServer -Scope CurrentUser
-}
+# Install and import the Az module
+Install-Module -Name Az -Force
+Import-Module Az
 
-# Sign in to Azure (you may need to modify this based on your authentication method)
-Connect-AzAccount
+# Authenticate to Azure (You may need to replace these with your actual credentials)
+$tenantId = "<Your Tenant ID>"
+$clientId = "<Your Application Client ID>"
+$clientSecret = "<Your Application Client Secret>"
+$subscriptionId = "<Your Subscription ID>"
 
-# Define Azure Key Vault information
-$KeyVaultName = "YourKeyVaultName"
-$SecretName = "YourSecretName"
+$securePassword = ConvertTo-SecureString $clientSecret -AsPlainText -Force
+$credential = New-Object PSCredential($clientId, $securePassword)
 
-# Define the SQL Server connection information
-$SqlServerInstance = "YourSqlServerInstance"
-$DatabaseName = "YourDatabaseName"
+Connect-AzAccount -ServicePrincipal -Tenant $tenantId -Credential $credential
 
-# Retrieve the SAS token from Azure Key Vault
-$SasTokenSecret = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $SecretName
-$SasToken = $SasTokenSecret.SecretValueText
+# Specify the Key Vault details
+$keyVaultName = "<Your Key Vault Name>"
+$secretName = "<Your Secret Name>"
 
-# Define the SQL Server credential name
-$CredentialName = "YourCredentialName"
+# Get the secret value (which should be the SAS token)
+$secretValue = (Get-AzKeyVaultSecret -VaultName $keyVaultName -Name $secretName).SecretValueText
 
-# Construct the connection string with the SAS token
-$ConnectionString = "Server=tcp:$SqlServerInstance,1433;Database=$DatabaseName;"
+# SQL Server details
+$serverName = "<Your SQL Server Name>"
+$databaseName = "<Your Database Name>"
+$credentialName = "MyAzureSASCredential"  # Change this to your desired credential name
 
-# Create the SQL Server credential
-$Credential = New-SqlCredential -Name $CredentialName -ConnectionString $ConnectionString -CredentialAzureToken -AzureToken $SasToken
+# Connect to the SQL Server using the SAS token
+$connectionString = "Server=$serverName.database.windows.net;Database=$databaseName;Credential=$credentialName;"
 
-# Output the result
-if ($Credential) {
-    Write-Host "SQL Server credential '$CredentialName' created successfully."
-} else {
-    Write-Host "Failed to create the SQL Server credential."
-}
+# Create the SQL Server credential using the SAS token
+$credentialQuery = "CREATE DATABASE SCOPED CREDENTIAL [$credentialName] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$secretValue';"
+
+Invoke-SqlCmd -ServerInstance $serverName -Database $databaseName -Query $credentialQuery -Username $clientId -Password $clientSecret -ConnectionTimeout 30
