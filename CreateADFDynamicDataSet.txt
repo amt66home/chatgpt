@@ -1,0 +1,40 @@
+In Azure Data Factory, you can create a dynamic dataset that selects a database using parameterization and expressions. Here's how you can achieve this:
+
+Create a Linked Service:
+Start by creating a linked service that connects to your databases. This linked service will be used to parameterize the database selection.
+
+Create Parameters:
+Define parameters for your dataset. In this case, you'll need a parameter for the database name. You can do this by going to the "Author & Monitor" section of your Data Factory, clicking on the "Author" tab, and then selecting "Manage" from the left panel. Under "Parameters", create a parameter, for example, DatabaseName, of type String.
+
+Create a Dynamic Dataset:
+Now you'll create a dataset that uses the parameterized linked service. Follow these steps:
+
+a. Click on the "Author & Monitor" section of your Data Factory.
+b. Click on the "Author" tab and select the appropriate data store folder (e.g., Azure SQL Database, Azure Synapse Analytics, etc.).
+c. Click on the "+ New" button and choose "Dataset".
+d. Select the data store type you're working with.
+
+Configure the Dataset:
+Fill in the dataset details, and where you need to specify the database name, use the parameter you created earlier. Here's an example using Azure SQL Database:
+
+a. Choose the linked service you created.
+b. In the connection properties or connection string, use the expression to refer to the parameter. For example:
+
+perl
+Copy code
+"connectionString": {
+    "type": "Expression",
+    "value": {
+        "value": "@concat('Server=tcp:<your-server-name>.database.windows.net,1433;Database=', dataset().DatabaseName, ';')",
+        "type": "String"
+    }
+}
+Replace <your-server-name> with your actual server name.
+
+Use the Dataset in Activities:
+You can now use this dynamic dataset in your pipeline activities. Whenever you trigger the pipeline, you'll need to provide a value for the DatabaseName parameter.
+
+Execute the Pipeline:
+When you trigger the pipeline, you'll need to provide the DatabaseName parameter value. This value will be used to dynamically determine the database to connect to.
+
+Remember that the actual configuration might vary based on the specific data store you're working with, but the key idea is to use parameters and expressions to create a dynamic dataset that can select a database based on the provided parameter value.
