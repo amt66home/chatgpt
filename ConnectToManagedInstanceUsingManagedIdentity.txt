@@ -1,11 +1,14 @@
-Connecting to an Azure SQL Managed Instance using a Managed Identity in SQL Server Management Studio (SSMS) involves several steps. Managed identities provide a more secure way to authenticate applications and services without exposing sensitive credentials. Here's a step-by-step guide:
+Connecting to an Azure SQL Managed Instance using a Managed Identity in SQL Server Management Studio (SSMS) involves several steps. 
+Managed identities provide a more secure way to authenticate applications and services without exposing sensitive credentials. Here's a step-by-step guide:
 
 1. **Azure Setup:**
    - Make sure you have an Azure SQL Managed Instance and an Azure Active Directory (Azure AD) tenant set up.
-   - Ensure that the Managed Identity you want to use is either a system-assigned identity (assigned directly to the Azure resource) or a user-assigned identity (created separately in Azure AD and associated with the Azure resource).
+   - Ensure that the Managed Identity you want to use is either a system-assigned identity (assigned directly to the Azure resource) or 
+   a user-assigned identity (created separately in Azure AD and associated with the Azure resource).
 
 2. **Assign Permissions:**
-   - In your Azure SQL Managed Instance, ensure that the managed identity has the necessary permissions. Typically, it should have at least the "Contributor" role on the Azure SQL Managed Instance or the specific database you want to connect to.
+   - In your Azure SQL Managed Instance, ensure that the managed identity has the necessary permissions. Typically, it should have at least the "Contributor"    role on the Azure SQL Managed Instance or the specific database    
+   you want to connect to.
 
 3. **Get Connection Information:**
    - In the Azure portal, navigate to your Azure SQL Managed Instance.
