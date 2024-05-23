@@ -1,0 +1,90 @@
+Creating a new Azure disk from a disk snapshot stored in a Recovery Services Vault using PowerShell involves several steps. You'll need to interact with both the Azure Recovery Services Vault and the Azure Compute services. Below is a comprehensive PowerShell script that outlines these steps:
+
+1. **Login to Azure**
+2. **Set the necessary context**
+3. **Retrieve the snapshot from the Recovery Services Vault**
+4. **Create a new managed disk from the snapshot**
+
+Make sure you have the necessary Azure PowerShell modules installed and updated. You can install them using:
+
+```powershell
+Install-Module -Name Az -AllowClobber -Force
+```
+
+Here's the script:
+
+```powershell
+# Login to your Azure account
+Connect-AzAccount
+
+# Variables - Update these values with your specific details
+$resourceGroupName = "yourResourceGroupName"
+$recoveryVaultName = "yourRecoveryServicesVaultName"
+$snapshotName = "yourSnapshotName"
+$newDiskName = "newDiskName"
+$newDiskResourceGroupName = "newDiskResourceGroupName"
+$location = "yourAzureRegion"
+
+# Set the context to the appropriate subscription if needed
+# Get-AzSubscription - to list subscriptions
+$subscriptionId = "yourSubscriptionId"
+Select-AzSubscription -SubscriptionId $subscriptionId
+
+# Retrieve the Recovery Services Vault
+$vault = Get-AzRecoveryServicesVault -ResourceGroupName $resourceGroupName -Name $recoveryVaultName
+if ($vault -eq $null) {
+    throw "Recovery Services Vault not found."
+}
+
+# Retrieve the backup item (disk snapshot) from the vault
+$backupItem = Get-AzRecoveryServicesBackupItem -VaultId $vault.ID -WorkloadType AzureVM -Name $snapshotName
+if ($backupItem -eq $null) {
+    throw "Snapshot not found in the Recovery Services Vault."
+}
+
+# Trigger a restore job to create a disk from the snapshot
+$restoreRequest = New-AzRecoveryServicesBackupRequest
+$restoreRequest.RestoreRequestType = "AzureResourceRestoreRequest"
+$restoreRequest.TargetResourceGroupId = (Get-AzResourceGroup -Name $newDiskResourceGroupName).ResourceId
+$restoreRequest.TargetDiskType = "Standard_LRS" # or "Premium_LRS" based on your requirement
+
+$restoreJob = Restore-AzRecoveryServicesBackupItem -Item $backupItem -VaultId $vault.ID -RestoreRequest $restoreRequest
+if ($restoreJob.Status -ne "InProgress") {
+    throw "Failed to start the restore job."
+}
+
+# Wait for the restore job to complete
+$jobStatus = $restoreJob.Status
+while ($jobStatus -eq "InProgress" -or $jobStatus -eq "Preparing") {
+    Start-Sleep -Seconds 30
+    $job = Get-AzRecoveryServicesBackupJob -VaultId $vault.ID -JobId $restoreJob.JobId
+    $jobStatus = $job.Status
+    Write-Output "Restore job status: $jobStatus"
+}
+
+if ($jobStatus -ne "Completed") {
+    throw "Restore job failed with status: $jobStatus"
+}
+
+# Once the restore job is complete, retrieve the created disk ID
+$restoredDiskId = $job.Properties.ExtendedProperties["TargetResourceId"]
+
+# Optionally, you can create a new disk object and customize it further if needed
+$newDisk = New-AzDisk -ResourceGroupName $newDiskResourceGroupName -DiskName $newDiskName -Disk $restoredDiskId -Location $location
+
+Write-Output "New disk created successfully: $($newDisk.Id)"
+```
+
+### Key Points:
+1. **Login and Context Setting**: Ensure you are logged in to your Azure account and the correct subscription and context are selected.
+2. **Retrieve Snapshot**: Access the snapshot from the Recovery Services Vault.
+3. **Restore Job**: Trigger a restore job to create a new managed disk from the snapshot.
+4. **Wait for Completion**: Poll the restore job until it completes.
+5. **Retrieve and Use New Disk**: Once the job is complete, retrieve the new disk's ID and optionally configure it further.
+
+### Important Notes:
+- **Resource Names**: Replace placeholder values like `yourResourceGroupName`, `yourRecoveryServicesVaultName`, etc., with your actual Azure resource details.
+- **Error Handling**: The script includes basic error handling, but you might want to add more robust error handling and logging for production use.
+- **Permissions**: Ensure you have the necessary permissions to access the Recovery Services Vault, retrieve snapshots, and create resources in the specified resource groups.
+
+This script provides a foundational approach, which you can customize further based on your specific requirements and environment.
